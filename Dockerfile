@@ -1,6 +1,6 @@
-FROM nvidia/cuda:10.0-base-ubuntu18.04
+FROM nvidia/cuda:9.0-base
 
-# Install some basic utilities
+# Install some basic utilities and Java for Minecraft
 RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y \
     htop \
     gcc \
     xvfb \
-    python-opengl\
-    x11-xserver-utils\
+    python-opengl \
+    x11-xserver-utils \
+    openjdk-8-jdk \
  && rm -rf /var/lib/apt/lists/*
 
 # Create a working directory
@@ -38,29 +39,20 @@ RUN curl -so ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-4.6.1
 ENV PATH=/home/user/miniconda/bin:$PATH
 ENV CONDA_AUTO_UPDATE_CONDA=false
 
-# Create a Python 3.7 environment
+# Create a Python 3.6 environment
 RUN /home/user/miniconda/bin/conda install conda-build \
- && /home/user/miniconda/bin/conda create -y --name py37 python=3.7.3 \
+ && /home/user/miniconda/bin/conda create -y --name py36 python=3.6 \
  && /home/user/miniconda/bin/conda clean -ya
-ENV CONDA_DEFAULT_ENV=py37
+ENV CONDA_DEFAULT_ENV=py36
 ENV CONDA_PREFIX=/home/user/miniconda/envs/$CONDA_DEFAULT_ENV
 ENV PATH=$CONDA_PREFIX/bin:$PATH
 
-# Install Minecraft needed libraries
-RUN sudo apt-get update
-RUN sudo apt-get install openjdk-8-jdk -y
+# TensorFlow with CUDA 9.0 installation
+RUN conda install -y cudatoolkit=9.0 tensorflow-gpu=1.12 matplotlib pandas jupyter jupyterlab scikit-learn
+RUN conda clean -ya
+
+# Install MineRL
 RUN pip install --upgrade --user minerl
-
-# PyTorch with CUDA 10 installation
-RUN conda install -y -c pytorch \
-    cuda100=1.0 \
-    magma-cuda100=2.4.0 \
-    "pytorch=1.1.0=py3.7_cuda10.0.130_cudnn7.5.1_0" \
-    torchvision=0.3.0 \
- && conda clean -ya
-
-# Install jupyter notebook
-RUN pip install jupyter pandas matplotlib numpy scipy sklearn jupyterlab
 
 # Create starting file
 RUN echo "xhost + & jupyter notebook --allow-root --ip 0.0.0.0" > /app/xvfb.sh
